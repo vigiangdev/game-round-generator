@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
         integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
 
-    <title>Random Number Generator</title>
+    <title>Game Round Automator</title>
 </head>
 
 <body>
@@ -16,22 +16,41 @@
     </nav>
 
     <div class="container-fluid">
-        <div class="row p-5">
-            <div class="col py-3">
+        <div class="row px-5 py-2">
+            <div class="col py-2">
                 <h2>Question Card</h2>
-                <button class="btn btn-success my-2 draw-question-button">Draw</button>
                 <div class="card" style="width: 12rem;">
-                    <div class="card-body">
+                    <div class="card-body draw-question-button">
                         <p class="card-text draw-question-card">1</p>
                     </div>
                 </div>
+                <button class="btn btn-success my-2 btn-automate">Automate Game Round</button>
             </div>
         </div>
     </div>
 
     <div class="container-fluid">
-        <div class="row p-5 player-cards">
+        <div class="row px-5 py-2 player-cards">
 
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <div class="row px-5 py-2">
+            <div class="col">
+                <h2>History</h2>
+                <table class="table table-striped table-bordered table-hover w-100 table-history">
+                    <thead>
+                        <tr class="table-history-head">
+                            <th>Round</th>
+                            <th>History</th>
+                        </tr>
+                    </thead>
+                    <tbody class="table-history-body">
+
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -41,113 +60,153 @@
         // DOM Selectors
         const elements = {
             // question selectors
-            drawQuestionButton: document.querySelector('.draw-question-button'),
-            drawQuestionCard: document.querySelector('.draw-question-card'),
+            automateButton: document.querySelector('.btn-automate'),
+            questionCard: document.querySelector('.draw-question-card'),
 
             // players selectors
             playerCards: document.querySelector('.player-cards'),
-            playerCardsList: document.querySelector('.player-cards-list')
+            playerCardsList: document.querySelector('.player-cards-list'),
+
+            // table history selector
+            historyTableHead: document.querySelector('.table-history-head'),
+            historyTableBody: document.querySelector('.table-history-body')
         }
 
+
+
+        // State
         let state = {};
+        state.historyTotal = [];
+
+
+
 
         // Controller
         function controller() {
-            let numOfPlayers = parseInt(prompt('Enter number of players', 6), 10);
-            let numOfQuestionCards = parseInt(prompt('Enter number of question cards', 50), 10);
-            let numOfAnswerCards = parseInt(prompt('Enter number of answer cards', 200), 10);
-            let numOfInitialCards = parseInt(prompt('Enter the number of cards to be passed out per person', 5), 10);
+            const numPlayer = parseInt(prompt('Enter number of players.', 4), 10);
+            const numQuestionCard = parseInt(prompt('Enter number of question cards.', 50), 10);
+            const numAnswerCard = parseInt(prompt('Enter number of answer cards.', 200), 10);
+            const numInitialCard = parseInt(prompt('Enter number of cards per person.', 5), 10);
+
+            // const numPlayer = 4;
+            // const numQuestionCard = 50;
+            // const numAnswerCard = 200;
+            // const numInitialCard = 5;
+
+            if (numAnswerCard / numInitialCard >= numPlayer) {
 
                 // question cards
-                let cardsQuestion = generateCards(numOfQuestionCards);
-                state.randomCardsQuestion = shuffleCards(cardsQuestion);
-                state.discardedCardsQuestion = [];
+                state.cardQuestion = new Card(numQuestionCard)
+                state.cardQuestion.generateCard();
+                state.cardQuestion.shuffleCard();
 
                 // answer cards
-                let cardsAnswer = generateCards(numOfAnswerCards);
-                state.randomCardsAnswer = shuffleCards(cardsAnswer);
-                state.discardedCardsAnswer = [];
+                state.cardAnswer = new Card(numAnswerCard);
+                state.cardAnswer.generateCard();
+                state.cardAnswer.shuffleCard()
 
                 // create players
-                createPlayer(numOfPlayers, numOfInitialCards);
+                createPlayer(numPlayer, numInitialCard);
+
+                // players draw initial cards
+                drawInitialCard(state.cardAnswer.cardShuffle, numInitialCard);
 
                 // render players
-                renderPlayers();
+                renderPlayer(state.players);
 
-                // render cards
-                renderCards();
+                // render player cards
+                renderCard(state.players);
 
-                // render question
-                renderQuestion();
+                // draw question card
+                state.cardQuestion.drawCard(state.cardQuestion.cardShuffle, 1);
+
+                // render question card
+                renderQuestion(state.cardQuestion);
+
+                // render history table
+                renderHistoryHead(state.players);
+
+                console.log(state);
+            } else {
+                alert('Not enough cards per person. Please refresh the page and try again.');
+                // controller();
+            }
         };
 
-        // Model
 
+
+        // Model
         class Player {
-            constructor(player) {
-                this.player = player;
+            constructor(name, id) {
+                this.name = name;
+                this.id = id;
+            };
+        };
+
+        class Card {
+            constructor(numCard) {
+                this.numCard = numCard;
             };
 
-            drawInitialCards(cardsArray, numOfCards) {
-                if (cardsArray.length >= numOfCards) {
-                    this.cards = cardsArray.slice(0, numOfCards)
-                    cardsArray.splice(0, numOfCards);
+            generateCard() {
+                let cardDeck = [];
+                for (let i = 1; i < this.numCard + 1; i++) {
+                    cardDeck.push(i);
+                };
+                this.cardDeckInitial = cardDeck;
+            };
+
+            shuffleCard() {
+                let cardShuffle = [];
+                for (let i = this.cardDeckInitial.length; i > 0; i--) {
+                    let randInd = randomIndex(i);
+                    cardShuffle.push(this.cardDeckInitial[randInd]);
+                    this.cardDeckInitial.splice(randInd, 1);
+                };
+                this.cardShuffle = cardShuffle;
+            };
+
+            drawCard(cardDeck, numCard) {
+                if (cardDeck.length >= numCard) {
+                    this.cardDraw = cardDeck.slice(0, numCard);
+                    cardDeck.splice(0, numCard);
                 } else {
-                    alert('No more cards!');
+                    this.cardDraw = undefined;
+                    // return false;
                 };
             };
         };
 
-        function generateCards(numOfCards) {
-            let cards = [];
-            for (i = 1; i < numOfCards + 1; i++) {
-                cards.push(i);
-            };
-            return cards;
+        function randomIndex(maxInt) {
+            return Math.floor(Math.random() * maxInt);
         };
 
-        function shuffleCards(cardsArray) {
-            let newCards = [];
-            for (let i = cardsArray.length; i > 0; i--) {
-                let randomIndex = Math.floor(Math.random() * i);
-                newCards.push(cardsArray[randomIndex]);
-                cardsArray.splice(randomIndex, 1);
-            };
-            return newCards;
-        };
-
-        function drawQuestion() {
-            if (state.randomCardsQuestion[1]) {
-                state.discardedCardsQuestion.unshift(state.randomCardsQuestion[0]);
-                state.randomCardsQuestion.shift();
-                renderQuestion();
-            } else {
-                alert('No more cards!');
-                elements.drawQuestionCard.innerHTML = "empty";
-            }
-        }
-
-        function createPlayer(numOfPlayers, numOfInitialCards) {
+        function createPlayer(numPlayer) {
             state.players = [];
-            for (let i = 0; i < numOfPlayers; i++) {
-                state.players[i] = new Player(`Player ${i + 1}`);
-                state.players[i].drawInitialCards(state.randomCardsAnswer, numOfInitialCards);
-            }
-        }
+            for (let i = 0; i < numPlayer; i++) {
+                state.players[i] = new Player(`P${i + 1}`, i + 1);
+            };
+        };
+
+        function drawInitialCard(cardDeck, numCard) {
+            state.players.forEach(player => {
+                state.cardAnswer.drawCard.apply(player, [cardDeck, numCard]);
+            });
+        };
+
 
 
         // View
-        function renderQuestion() {
-            elements.drawQuestionCard.innerHTML = state.randomCardsQuestion[0];
+        function renderQuestion(cardDeck) {
+            elements.questionCard.innerHTML = state.cardQuestion.cardDraw;
         };
 
-        function renderPlayers() {
-            state.players.forEach((player, index) => {
+        function renderPlayer(players) {
+            players.forEach((player, index) => {
                 elements.playerCards.insertAdjacentHTML('beforeend', `
                     <div class="col py-3">
-                        <h2 class="player-name">${player.player}</h2>
-                        <!-- <button id="player-${index + 1}-button"class="btn btn-success my-2">Draw</button> -->
-                        <ul class="list-group player-cards-list" id="player-${index + 1}-cards">
+                        <h2 class="player-name">${player.name}</h2>
+                        <ul class="list-group player-cards-list" id="player-${player.id}-cards">
 
                         </ul>
                     </div>
@@ -155,10 +214,10 @@
             });
         };
 
-        function renderCards() {
-            state.players.forEach((player, index) => {
-                let currentPlayer = document.querySelector(`#player-${index + 1}-cards`);
-                player.cards.forEach(card => {
+        function renderCard(players) {
+            players.forEach(player => {
+                let currentPlayer = document.querySelector(`#player-${player.id}-cards`);
+                player.cardDraw.forEach(card => {
                     currentPlayer.insertAdjacentHTML(
                         'beforeend', `
                         <li class="list-group-item player-hand-card">${card}</li>
@@ -168,25 +227,95 @@
             });
         };
 
+        function renderHistoryHead(players) {
+            players.forEach(player => {
+                elements.historyTableHead.insertAdjacentHTML('beforeend', `
+                    <th>${player.name}</th>
+                `);
+            });
+        };
+
+        function renderHistoryBody(historyCurrent, id) {
+            let listID = `history-${id}`;
+            elements.historyTableBody.insertAdjacentHTML('afterbegin', `
+                <tr id=${listID}></tr>
+            `);
+            let listIDSelector = document.querySelector(`#${listID}`);
+
+            historyCurrent.forEach(el => {
+                listIDSelector.insertAdjacentHTML('beforeend', `
+                    <td>${el}</td>
+                `);
+            });
+        };
+
+        function clearCard() {
+            elements.playerCards.innerHTML = "";
+        };
+
+        function automateGame(cardDeckQuestion, cardDeckAnswer, players) {
+
+            if (cardDeckQuestion.cardDraw[0] && players[0].cardDraw[0]) {
+                // initialize history
+                let historyCurrent = [];
+
+                // push current question deck card to history array
+                historyCurrent.unshift(cardDeckQuestion.cardDraw[0]);
+
+                // draw new question card
+                cardDeckQuestion.drawCard(cardDeckQuestion.cardShuffle, 1);
+
+                // display question card
+                elements.questionCard.innerHTML = cardDeckQuestion.cardDraw;
+
+
+                // each player discards and redraws a card randomly
+                players.forEach(player => {
+
+                    let randInd = randomIndex(player.cardDraw.length);
+
+                    historyCurrent.push(player.cardDraw[randInd]);
+
+                    player.cardDraw.splice(randInd, 1);
+
+                    if (cardDeckAnswer.cardShuffle[0]) {
+
+                        cardDeckAnswer.drawCard(cardDeckAnswer.cardShuffle, 1);
+
+                        player.cardDraw.push(cardDeckAnswer.cardDraw[0]);
+                    };
+                });
+
+                // save history to state
+                state.historyCurrent = historyCurrent;
+                state.historyTotal.push(historyCurrent);
+
+                // add round number to 0 index of array
+                historyCurrent.unshift(state.historyTotal.length);
+
+                // clear list
+                clearCard();
+
+                // rerender list
+                renderPlayer(players);
+                renderCard(players);
+
+                // render history
+                renderHistoryBody(historyCurrent, state.historyTotal.length);
+            }
+        }
+
+
+
 
         // Event Listeners
-        elements.drawQuestionButton.addEventListener('click', drawQuestion);
-        elements.playerCards.addEventListener('click', e => {
-            if (e.target.classList.contains("player-hand-card")) {
-                if (state.randomCardsAnswer[0]) {
-                    e.target.innerHTML = state.randomCardsAnswer[0];
-                    state.randomCardsAnswer.shift();
-                } else {
-                    e.target.parentNode.removeChild(e.target);
-                };
-                console.log(state.randomCardsAnswer);
-            };
+        elements.automateButton.addEventListener('click', () => {
+            automateGame(state.cardQuestion, state.cardAnswer, state.players);
         });
 
-
         controller();
-    </script>
 
+    </script>
 
 
     <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js"
